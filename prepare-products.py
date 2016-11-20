@@ -21,11 +21,14 @@ for dt in all_dates:
     df = pd.DataFrame(0, columns=target_columns, index=cur.index, dtype=np.uint8)
     df.loc[idx] = products.loc[idx]
 
-    Dataset.save_part(dt, 'products', sp.csr_matrix(df.values))
+    Dataset.save_part(dt, 'prev-products', sp.csr_matrix(df.values))
 
     if dt != test_date:
         products = cur[target_columns]
 
+        Dataset.save_part(dt, 'products', sp.csr_matrix(products.values))
+
 Dataset.save_part_features('products', target_columns)
+Dataset.save_part_features('prev-products', target_columns)
 
 print "Done."

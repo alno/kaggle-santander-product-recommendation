@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 
 import cPickle as pickle
@@ -33,7 +34,8 @@ class Dataset(object):
     part_types = {
         'basic': 'df',
         'targets': 'sp',
-        'products': 'sp'
+        'products': 'sp',
+        'prev-products': 'sp'
     }
 
     parts = part_types.keys()

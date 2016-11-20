@@ -9,15 +9,13 @@ from collections import defaultdict
 from numba import jit
 
 from meta import train_dates, test_date, target_columns
-from util import load_csr
+from util import Dataset
 
 min_eval_date = '2016-01-28'
 
 
 counts = defaultdict(lambda: defaultdict(int))
 counts_overall = np.zeros(len(target_columns))
-
-prev_owners = defaultdict(lambda: set())
 
 
 def encode_renta(renta):
@@ -45,7 +43,7 @@ def encode_renta(renta):
         return 11
 
 
-def encode(data):
+def encode(data, products):
     sexo = data['sexo'].values
     age = data['age'].values
     segmento = data['segmento'].values
@@ -75,6 +73,9 @@ def encode(data):
         enc.append((10, pais_residencia[i], sexo[i], age[i], segmento[i], renta[i]))
         enc.append((11, sexo[i], age[i], segmento[i]))
 
+        #for j in xrange(products.shape[1]):
+        #    enc.append((100 + j, pais_residencia[i], sexo[i], age[i], products[i, j]))
+
         res.append(enc)
 
     return res
@@ -98,7 +99,7 @@ def partial_fit(enc, targets):
                     counts[e][c] += 1
 
 
-def predict_row(idx, row, bests, bests_overall):
+def predict_row(idx, row, bests, bests_overall, prev_products):
     scores = np.zeros(len(target_columns))
 
     for h in row:
@@ -111,7 +112,7 @@ def predict_row(idx, row, bests, bests_overall):
         if scores[c] == 0:
             break
 
-        if idx not in prev_owners[c]:
+        if prev_products[c] == 0:
             pred.append(c)
 
             if len(pred) >= 7:
@@ -119,7 +120,7 @@ def predict_row(idx, row, bests, bests_overall):
 
     if len(pred) < 7:
         for c in bests_overall:
-            if c not in pred and idx not in prev_owners[c]:
+            if c not in pred and prev_products[c] == 0:
                 pred.append(c)
 
                 if len(pred) >= 7:
@@ -128,7 +129,7 @@ def predict_row(idx, row, bests, bests_overall):
     return pred
 
 
-def predict(data, enc):
+def predict(data, prev_products, enc):
     """ Predict """
 
     bests_overall = np.argsort(-counts_overall)
@@ -137,7 +138,7 @@ def predict(data, enc):
     for k in counts:
         bests[k] = map(operator.itemgetter(0), sorted(counts[k].items(), key=operator.itemgetter(1), reverse=True))
 
-    return [predict_row(data.index[i], row, bests, bests_overall) for i, row in enumerate(enc)]
+    return [predict_row(data.index[i], row, bests, bests_overall, prev_products[i]) for i, row in enumerate(enc)]
 
 
 @jit
@@ -180,26 +181,24 @@ start_time = time.time()
 
 
 for dt in train_dates:
-    print len(counts)
-
-    print "%ds, processing %s..." % (time.time() - start_time, dt)
-    targets = load_csr('cache/targets-%s.npz' % dt)
+    print "%ds, processing %s, %d hash buckets..." % (time.time() - start_time, dt, len(counts))
+    targets = Dataset.load_part(dt, 'targets')
     data = pd.read_pickle('cache/basic-%s.pickle' % dt)
-    encoded = encode(data)
+    prev_products = Dataset.load_part(dt, 'prev-products').toarray()
+
+    print "  Encoding..."
+    encoded = encode(data, prev_products)
 
     if dt >= min_eval_date:
         print "  Predicting..."
 
-        predictions = predict(data, encoded)
+        predictions = predict(data, prev_products, encoded)
         map_score = mapk(targets.toarray(), predictions)
 
         print "  MAP@7: %.7f" % map_score
 
     print "  Training..."
     partial_fit(encoded, targets)
-
-    for i, c in enumerate(target_columns):
-        prev_owners[i] = set(data.index[data[c] > 0])
 
 
 pred_name = 'hashes-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
@@ -209,10 +208,13 @@ if True:
     print "Processing test..."
 
     data = pd.read_pickle('cache/basic-%s.pickle' % test_date)
-    encoded = encode(data)
+    prev_products = Dataset.load_part(dt, 'prev-products').toarray()
+
+    print "  Encoding..."
+    encoded = encode(data, prev_products)
 
     print "  Predicting..."
-    pred = predict(data, encoded)
+    pred = predict(data, prev_products, encoded)
 
     subm = pd.DataFrame({'ncodpers': data.index, 'added_products': generate_submission(pred)})
     subm.to_csv('subm/%s.csv.gz' % pred_name, index=False, compression='gzip')
