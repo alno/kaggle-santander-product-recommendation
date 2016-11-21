@@ -208,7 +208,7 @@ if True:
     print "Processing test..."
 
     data = pd.read_pickle('cache/basic-%s.pickle' % test_date)
-    prev_products = Dataset.load_part(dt, 'prev-products').toarray()
+    prev_products = Dataset.load_part(test_date, 'prev-products').toarray()
 
     print "  Encoding..."
     encoded = encode(data, prev_products)
