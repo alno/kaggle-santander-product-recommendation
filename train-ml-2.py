@@ -2,17 +2,14 @@ import pandas as pd
 import numpy as np
 
 import datetime
-import time
 import argparse
 
 from numba import jit
 
-from meta import train_dates, test_date, target_columns
+from meta import target_columns
 from util import Dataset
 
 from kaggle_util import Xgb
-
-from sklearn.utils import resample
 
 
 parser = argparse.ArgumentParser(description='Train model')
@@ -21,26 +18,26 @@ parser.add_argument('--threads', type=int, default=4, help='specify thread count
 
 args = parser.parse_args()
 
-
-min_eval_date = '2016-05-28'
-
-train_data = None
-train_targets = None
-
-old_sample_rate = 0.9
-
 model = Xgb({
     'objective': 'multi:softprob',
     'eval_metric': 'mlogloss',
     'num_class': len(target_columns),
     'nthread': args.threads,
-    'max_depth': 4,
-}, 200)
+    'max_depth': 6,
+    'eta': 0.05,
+    'min_child_weight': 3,
+    'subsample': 0.85,
+    'colsample_bytree': 0.85,
+}, 170)
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
-feature_parts = ['manual']
+feature_parts = ['prev-products', 'manual']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
+
+
+eval_pairs = [('2015-05-28', '2016-05-28')]
+test_pair = ('2015-06-28', '2016-06-28')
 
 
 def densify(d):
@@ -75,39 +72,18 @@ def prepare_data(data, targets):
         return np.zeros((0, data.shape[1])), np.zeros(0)
 
 
-def add_to_train(data, targets):
-    """ Train on encoded rows and their targets """
-
-    global train_data, train_targets
-
-    data, targets = prepare_data(data, targets)
-
-    if train_data is None:
-        train_data = data
-        train_targets = targets
-    else:
-        if old_sample_rate < 1:  # Subsample old data
-            train_data, train_targets = resample(train_data, train_targets, replace=False, n_samples=int(len(train_targets) * old_sample_rate), random_state=len(train_targets))
-
-        train_data = np.vstack((train_data, data))
-        train_targets = np.hstack((train_targets, targets))
-
-    print "    Train data shape: %s" % str(train_data.shape)
-    print "    Train targets shape: %s" % str(train_targets.shape)
-
-
 def predict(data, prev_products, targets=None):
     """ Predict """
 
     shape = (data.shape[0], len(target_columns))
 
     if targets is None:
-        pred = model.fit_predict(train=(train_data, train_targets), test=(data,), param_grid=param_grid, feature_names=feature_names)
+        pred = model.fit_predict(train=prepare_data(train_data, train_targets), test=(data,), feature_names=feature_names)
     else:
         if args.optimize:
-            model.optimize(train=(train_data, train_targets), val=prepare_data(data, targets), feature_names=feature_names)
+            model.optimize(train=prepare_data(train_data, train_targets), val=prepare_data(data, targets), param_grid=param_grid, feature_names=feature_names)
 
-        pred = model.fit_predict(train=(train_data, train_targets), val=prepare_data(data, targets), test=(data,), feature_names=feature_names)
+        pred = model.fit_predict(train=prepare_data(train_data, train_targets), val=prepare_data(data, targets), test=(data,), feature_names=feature_names)
 
     # Reshape scores, exclude previously bought products
     scores = pred['ptest'].reshape(shape) * (1 - prev_products)
@@ -150,45 +126,48 @@ def generate_submission(pred):
     return [' '.join(target_columns[i] for i in p) for p in pred]
 
 
-map_score = None
+for dtt, dtp in eval_pairs:
+    print "Training on %s, evaluating on %s..." % (dtt, dtp)
+    print "  Loading..."
 
-start_time = time.time()
+    train_targets = Dataset.load_part(dtt, 'targets').toarray()
+    train_idx, train_data = load_data(dtt)
 
+    eval_targets = Dataset.load_part(dtp, 'targets').toarray()
+    eval_idx, eval_data = load_data(dtp)
+    eval_prev_products = Dataset.load_part(dtp, 'prev-products').toarray()
 
-for dt in train_dates[1:]:  # Skipping first date
-    print "%ds, processing %s..." % (time.time() - start_time, dt)
-    targets = Dataset.load_part(dt, 'targets').toarray()
-    idx, data = load_data(dt)
+    print "  Predicting..."
 
-    if dt >= min_eval_date:
-        prev_products = Dataset.load_part(dt, 'prev-products').toarray()
+    eval_predictions = predict(eval_data, eval_prev_products, eval_targets)
 
-        print "  Predicting..."
+    map_score = mapk(eval_targets, eval_predictions)
 
-        predictions = predict(data, prev_products, targets)
-        #print predictions
-        map_score = mapk(targets, predictions)
+    print "  MAP@7: %.7f" % map_score
 
-        print "  MAP@7: %.7f" % map_score
-
-    print "  Adding to train..."
-    add_to_train(data, targets)
+    del train_idx, train_data, train_targets, eval_idx, eval_data, eval_targets, eval_prev_products, eval_predictions
 
 
 pred_name = 'ml-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
 
 
 if True:
-    print "Processing test..."
+    dtt, dtp = test_pair
 
-    idx, data = load_data(test_date)
+    print "Training on %s, predicting on %s..." % (dtt, dtp)
+    print "  Loading..."
 
-    prev_products = Dataset.load_part(test_date, 'prev-products').toarray()
+    train_targets = Dataset.load_part(dtt, 'targets').toarray()
+    train_idx, train_data = load_data(dtt)
+
+    test_idx, test_data = load_data(dtp)
+    test_prev_products = Dataset.load_part(dtp, 'prev-products').toarray()
 
     print "  Predicting..."
-    pred = predict(data, prev_products)
 
-    subm = pd.DataFrame({'ncodpers': idx, 'added_products': generate_submission(pred)})
+    test_predictions = predict(test_data, test_prev_products)
+
+    subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
     subm.to_csv('subm/%s.csv.gz' % pred_name, index=False, compression='gzip')
 
 print "Prediction name: %s" % pred_name
