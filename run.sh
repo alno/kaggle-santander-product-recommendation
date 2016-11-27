@@ -15,6 +15,8 @@ train() {
 prepare basic
 prepare targets
 prepare products
+prepare product-time
+prepare product-purchases
 
 # Basic models
 train hashes

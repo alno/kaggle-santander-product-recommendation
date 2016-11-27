@@ -32,7 +32,7 @@ model = Xgb({
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
-feature_parts = ['prev-products', 'manual']
+feature_parts = ['prev-products', 'manual', 'product-purchases']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
 
 
