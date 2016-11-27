@@ -5,7 +5,32 @@ train_dates = ['2015-01-28', '2015-02-28', '2015-03-28', '2015-04-28', '2015-05-
 test_date = '2016-06-28'
 
 
-target_columns = ['ind_ahor_fin_ult1', 'ind_aval_fin_ult1', 'ind_cco_fin_ult1', 'ind_cder_fin_ult1', 'ind_cno_fin_ult1', 'ind_ctju_fin_ult1', 'ind_ctma_fin_ult1', 'ind_ctop_fin_ult1', 'ind_ctpp_fin_ult1', 'ind_deco_fin_ult1', 'ind_deme_fin_ult1', 'ind_dela_fin_ult1', 'ind_ecue_fin_ult1', 'ind_fond_fin_ult1', 'ind_hip_fin_ult1', 'ind_plan_fin_ult1', 'ind_pres_fin_ult1', 'ind_reca_fin_ult1', 'ind_tjcr_fin_ult1', 'ind_valo_fin_ult1', 'ind_viv_fin_ult1', 'ind_nomina_ult1', 'ind_nom_pens_ult1', 'ind_recibo_ult1']
+target_columns = [
+    #'ind_ahor_fin_ult1',
+    #'ind_aval_fin_ult1',
+    'ind_cco_fin_ult1',
+    'ind_cder_fin_ult1',
+    'ind_cno_fin_ult1',
+    'ind_ctju_fin_ult1',
+    'ind_ctma_fin_ult1',
+    'ind_ctop_fin_ult1',
+    'ind_ctpp_fin_ult1',
+    #'ind_deco_fin_ult1',
+    #'ind_deme_fin_ult1',
+    #'ind_dela_fin_ult1',
+    'ind_ecue_fin_ult1',
+    'ind_fond_fin_ult1',
+    'ind_hip_fin_ult1',
+    'ind_plan_fin_ult1',
+    'ind_pres_fin_ult1',
+    'ind_reca_fin_ult1',
+    'ind_tjcr_fin_ult1',
+    'ind_valo_fin_ult1',
+    'ind_viv_fin_ult1',
+    'ind_nomina_ult1',
+    'ind_nom_pens_ult1',
+    'ind_recibo_ult1'
+]
 
 
 raw_data_dtypes = {
@@ -57,4 +82,33 @@ raw_data_dtypes = {
     'ind_tjcr_fin_ult1': np.uint8,
     'ind_valo_fin_ult1': np.uint8,
     'ind_viv_fin_ult1': np.uint8,
+}
+
+
+# See https://www.kaggle.com/sudalairajkumar/santander-product-recommendation/maximum-possible-score/comments
+lb_target_means = {
+    'ind_cco_fin_ult1':      0.0096681,
+    'ind_recibo_ult1':       0.0086845,
+    'ind_tjcr_fin_ult1':     0.0041178,
+    'ind_reca_fin_ult1':     0.0032092,
+    'ind_nom_pens_ult1':     0.0021801,
+    'ind_nomina_ult1':       0.0021478,
+    'ind_ecue_fin_ult1':     0.0019961,
+    'ind_cno_fin_ult1':      0.0017839,
+    'ind_ctma_fin_ult1':     0.0004488,
+    'ind_valo_fin_ult1':     0.000278,
+    'ind_ctop_fin_ult1':     0.0001949,
+    'ind_ctpp_fin_ult1':     0.0001142,
+    'ind_fond_fin_ult1':     0.000104,
+    'ind_ctju_fin_ult1':     0.0000502,
+    'ind_hip_fin_ult1':      0.0000161,
+    'ind_plan_fin_ult1':     0.0000126,
+    'ind_pres_fin_ult1':     0.0000054,
+    'ind_cder_fin_ult1':     0.000009,
+    'ind_viv_fin_ult1':      0,
+    'ind_deco_fin_ult1':     0,
+    'ind_deme_fin_ult1':     0,
+    'ind_dela_fin_ult1':     0,  # ?
+    'ind_ahor_fin_ult1':     0,  # ?
+    'ind_aval_fin_ult1':     0,  # ?
 }
