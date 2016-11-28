@@ -6,8 +6,9 @@ import argparse
 
 from numba import jit
 
-from meta import target_columns
+from meta import target_columns, lb_target_means
 from util import Dataset
+from sklearn.utils import resample
 
 from kaggle_util import Xgb
 
@@ -28,7 +29,7 @@ model = Xgb({
     'min_child_weight': 3,
     'subsample': 0.85,
     'colsample_bytree': 0.85,
-}, 170)
+}, 200)
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
@@ -54,7 +55,7 @@ def load_data(dt):
     return idx, np.hstack(data)
 
 
-def prepare_data(data, targets):
+def prepare_data(data, targets, target_means=None):
     res_data = []
     res_targets = []
 
@@ -65,28 +66,61 @@ def prepare_data(data, targets):
         if cnt > 0:
             res_data.append(data[idx])
             res_targets.append(np.full(cnt, c, dtype=np.uint8))
+        else:
+            res_data.append(np.zeros((0, data.shape[1])))
+            res_targets.append(np.zeros(0))
 
-    if len(res_data) > 0:
-        return np.vstack(res_data), np.hstack(res_targets)
-    else:
-        return np.zeros((0, data.shape[1])), np.zeros(0)
+    # Resample data to mimic target distribution
+    if target_means is not None:
+        target_means = target_means / target_means.sum()
+        total = sum(t.shape[0] for t in res_targets)
+
+        for i in xrange(len(target_columns)):
+            dt, trg = res_data[i], res_targets[i]
+            n_samples = int(total * target_means[i])
+
+            if n_samples > trg.shape[0]:
+                dtn, trgn = resample(dt, trg, n_samples=n_samples-trg.shape[0], replace=(n_samples > trg.shape[0] * 2), random_state=11)
+
+                dt = np.vstack((dt, dtn))
+                trg = np.hstack((trg, trgn))
+            else:
+                dt, trg = resample(dt, trg, n_samples=n_samples, replace=False, random_state=11)
+
+            res_data[i] = dt
+            res_targets[i] = trg
+
+        print ("target", target_means)
+
+    dist = np.array([float(t.shape[0]) for t in res_targets])
+    dist /= dist.sum()
+
+    print ("dist", dist)
+
+    return np.vstack(res_data), np.hstack(res_targets)
 
 
-def predict(data, prev_products, targets=None):
+def predict(data, prev_products, target_means, targets=None):
     """ Predict """
 
     shape = (data.shape[0], len(target_columns))
 
     if targets is None:
-        pred = model.fit_predict(train=prepare_data(train_data, train_targets), test=(data,), feature_names=feature_names)
+        pred = model.fit_predict(train=prepare_data(train_data, train_targets, target_means), test=(data,), feature_names=feature_names)
     else:
         if args.optimize:
-            model.optimize(train=prepare_data(train_data, train_targets), val=prepare_data(data, targets), param_grid=param_grid, feature_names=feature_names)
+            model.optimize(train=prepare_data(train_data, train_targets, target_means), val=prepare_data(data, targets), param_grid=param_grid, feature_names=feature_names)
 
-        pred = model.fit_predict(train=prepare_data(train_data, train_targets), val=prepare_data(data, targets), test=(data,), feature_names=feature_names)
+        pred = model.fit_predict(train=prepare_data(train_data, train_targets, target_means), val=prepare_data(data, targets), test=(data,), feature_names=feature_names)
 
     # Reshape scores, exclude previously bought products
     scores = pred['ptest'].reshape(shape) * (1 - prev_products)
+
+    for i, c in enumerate(target_columns):
+        print "%s: %.6f" % (c, scores[:, i].mean())
+
+    #for i in range(len(target_means)):
+    #    scores[:, i] *= target_means[i] / scores[:, i].mean()
 
     # Convert scores to predictions
     return np.argsort(-scores, axis=1)[:, :8]
@@ -139,7 +173,7 @@ for dtt, dtp in eval_pairs:
 
     print "  Predicting..."
 
-    eval_predictions = predict(eval_data, eval_prev_products, eval_targets)
+    eval_predictions = predict(eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
 
     map_score = mapk(eval_targets, eval_predictions)
 
@@ -160,12 +194,13 @@ if True:
     train_targets = Dataset.load_part(dtt, 'targets').toarray()
     train_idx, train_data = load_data(dtt)
 
+    test_target_means = np.array([lb_target_means[c] for c in target_columns])
     test_idx, test_data = load_data(dtp)
     test_prev_products = Dataset.load_part(dtp, 'prev-products').toarray()
 
     print "  Predicting..."
 
-    test_predictions = predict(test_data, test_prev_products)
+    test_predictions = predict(test_data, test_prev_products, test_target_means)
 
     subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
     subm.to_csv('subm/%s.csv.gz' % pred_name, index=False, compression='gzip')
