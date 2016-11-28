@@ -6,7 +6,7 @@ import argparse
 
 from numba import jit
 
-from meta import target_columns, lb_target_means
+from meta import target_columns, lb_target_means, test_date
 from util import Dataset
 from sklearn.utils import resample
 
@@ -49,10 +49,17 @@ def densify(d):
 
 
 def load_data(dt):
-    idx = pd.read_pickle('cache/basic-%s.pickle' % dt).index
-    data = [densify(Dataset.load_part(dt, p)) for p in feature_parts]
+    data = np.hstack([densify(Dataset.load_part(dt, p)) for p in feature_parts])
 
-    return idx, np.hstack(data)
+    if dt == test_date:
+        return data
+
+    exs = Dataset.load_part(dt, 'existing')
+
+    data = data[exs]
+    targets = Dataset.load_part(dt, 'targets')[exs].toarray()
+
+    return data, targets
 
 
 def prepare_data(data, targets, target_means=None):
@@ -164,12 +171,10 @@ for dtt, dtp in eval_pairs:
     print "Training on %s, evaluating on %s..." % (dtt, dtp)
     print "  Loading..."
 
-    train_targets = Dataset.load_part(dtt, 'targets').toarray()
-    train_idx, train_data = load_data(dtt)
+    train_data, train_targets = load_data(dtt)
 
-    eval_targets = Dataset.load_part(dtp, 'targets').toarray()
-    eval_idx, eval_data = load_data(dtp)
-    eval_prev_products = Dataset.load_part(dtp, 'prev-products').toarray()
+    eval_data, eval_targets = load_data(dtp)
+    eval_prev_products = Dataset.load_part(dtp, 'prev-products')[Dataset.load_part(dtp, 'existing')].toarray()
 
     print "  Predicting..."
 
@@ -179,7 +184,7 @@ for dtt, dtp in eval_pairs:
 
     print "  MAP@7: %.7f" % map_score
 
-    del train_idx, train_data, train_targets, eval_idx, eval_data, eval_targets, eval_prev_products, eval_predictions
+    del train_data, train_targets, eval_data, eval_targets, eval_prev_products, eval_predictions
 
 
 pred_name = 'ml-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
@@ -191,11 +196,11 @@ if True:
     print "Training on %s, predicting on %s..." % (dtt, dtp)
     print "  Loading..."
 
-    train_targets = Dataset.load_part(dtt, 'targets').toarray()
-    train_idx, train_data = load_data(dtt)
+    train_data, train_targets = load_data(dtt)
 
     test_target_means = np.array([lb_target_means[c] for c in target_columns])
-    test_idx, test_data = load_data(dtp)
+    test_idx = pd.read_pickle('cache/basic-%s.pickle' % dtp).index
+    test_data = load_data(dtp)
     test_prev_products = Dataset.load_part(dtp, 'prev-products').toarray()
 
     print "  Predicting..."

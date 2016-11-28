@@ -33,6 +33,7 @@ class Dataset(object):
 
     part_types = {
         'basic': 'df',
+        'existing': 'd1',
         'manual': 'd2',
         'product-time': 'd2',
         'product-purchases': 'sp',
@@ -61,7 +62,7 @@ class Dataset(object):
             return load_csr('%s/%s-%s.npz' % (cache_dir, part_name, dt))
         elif cls.part_types[part_name] == 'df':
             return pd.read_pickle('%s/%s-%s.pickle' % (cache_dir, part_name, dt))
-        elif cls.part_types[part_name] == 'd2':
+        elif cls.part_types[part_name][0] == 'd':
             return np.load('%s/%s-%s.npy' % (cache_dir, part_name, dt))
         else:
             raise ValueError
@@ -72,7 +73,7 @@ class Dataset(object):
             save_csr('%s/%s-%s.npz' % (cache_dir, part_name, dt), part)
         elif cls.part_types[part_name] == 'df':
             part.to_pickle('%s/%s-%s.pickle' % (cache_dir, part_name, dt))
-        elif cls.part_types[part_name] == 'd2':
+        elif cls.part_types[part_name][0] == 'd':
             np.save('%s/%s-%s.npy' % (cache_dir, part_name, dt), part)
         else:
             raise ValueError
