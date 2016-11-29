@@ -37,8 +37,10 @@ feature_parts = ['prev-products', 'manual']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
 
 
-eval_pairs = [('2015-05-28', '2016-05-28')]
-test_pair = ('2015-06-28', '2016-06-28')
+train_pairs = [
+    (['2015-05-28'], '2016-05-28'),
+    (['2015-06-28'], '2016-06-28'),
+]
 
 
 def densify(d):
@@ -50,16 +52,31 @@ def densify(d):
 
 def load_data(dt):
     data = np.hstack([densify(Dataset.load_part(dt, p)) for p in feature_parts])
+    prev_products = Dataset.load_part(dt, 'prev-products').toarray()
 
     if dt == test_date:
-        return data
+        return data, prev_products, pd.read_pickle('cache/basic-%s.pickle' % dt).index
 
     exs = Dataset.load_part(dt, 'existing')
 
     data = data[exs]
+    prev_products = prev_products[exs]
     targets = Dataset.load_part(dt, 'targets')[exs].toarray()
 
-    return data, targets
+    return data, prev_products, targets
+
+
+def load_train_data(dtt):
+    data = []
+    targets = []
+
+    for dt in dtt:
+        dt_data, _, dt_targets = load_data(dt)
+
+        data.append(dt_data)
+        targets.append(dt_targets)
+
+    return np.vstack(data), np.vstack(targets)
 
 
 def prepare_data(data, targets, target_means=None):
@@ -84,7 +101,7 @@ def prepare_data(data, targets, target_means=None):
 
         for i in xrange(len(target_columns)):
             dt, trg = res_data[i], res_targets[i]
-            n_samples = int(total * target_means[i])
+            n_samples = int(total * target_means[i] * 0.8)
 
             if n_samples > trg.shape[0]:
                 dtn, trgn = resample(dt, trg, n_samples=n_samples-trg.shape[0], replace=(n_samples > trg.shape[0] * 2), random_state=11)
@@ -107,7 +124,7 @@ def prepare_data(data, targets, target_means=None):
     return np.vstack(res_data), np.hstack(res_targets)
 
 
-def predict(data, prev_products, target_means, targets=None):
+def predict(train_data, train_targets, data, prev_products, target_means, targets=None):
     """ Predict """
 
     shape = (data.shape[0], len(target_columns))
@@ -167,48 +184,37 @@ def generate_submission(pred):
     return [' '.join(target_columns[i] for i in p) for p in pred]
 
 
-for dtt, dtp in eval_pairs:
-    print "Training on %s, evaluating on %s..." % (dtt, dtp)
-    print "  Loading..."
-
-    train_data, train_targets = load_data(dtt)
-
-    eval_data, eval_targets = load_data(dtp)
-    eval_prev_products = Dataset.load_part(dtp, 'prev-products')[Dataset.load_part(dtp, 'existing')].toarray()
-
-    print "  Predicting..."
-
-    eval_predictions = predict(eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
-
-    map_score = mapk(eval_targets, eval_predictions)
-
-    print "  MAP@7: %.7f" % map_score
-
-    del train_data, train_targets, eval_data, eval_targets, eval_prev_products, eval_predictions
-
-
-pred_name = 'ml-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
-
-
-if True:
-    dtt, dtp = test_pair
-
+for dtt, dtp in train_pairs:
     print "Training on %s, predicting on %s..." % (dtt, dtp)
     print "  Loading..."
 
-    train_data, train_targets = load_data(dtt)
+    train_data, train_targets = load_train_data(dtt)
 
-    test_target_means = np.array([lb_target_means[c] for c in target_columns])
-    test_idx = pd.read_pickle('cache/basic-%s.pickle' % dtp).index
-    test_data = load_data(dtp)
-    test_prev_products = Dataset.load_part(dtp, 'prev-products').toarray()
+    if dtp != test_date:
+        eval_data, eval_prev_products, eval_targets = load_data(dtp)
 
-    print "  Predicting..."
+        print "  Predicting..."
 
-    test_predictions = predict(test_data, test_prev_products, test_target_means)
+        eval_predictions = predict(train_data, train_targets, eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
 
-    subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
-    subm.to_csv('subm/%s.csv.gz' % pred_name, index=False, compression='gzip')
+        map_score = mapk(eval_targets, eval_predictions)
 
-print "Prediction name: %s" % pred_name
+        print "  MAP@7: %.7f" % map_score
+
+        del eval_data, eval_targets, eval_prev_products, eval_predictions
+    else:
+        test_data, test_prev_products, test_idx = load_data(dtp)
+        test_target_means = np.array([lb_target_means[c] for c in target_columns])
+
+        print "  Predicting..."
+
+        test_predictions = predict(train_data, train_targets, test_data, test_prev_products, test_target_means)
+        test_prediction_name = 'ml-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
+
+        subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
+        subm.to_csv('subm/%s.csv.gz' % test_prediction_name, index=False, compression='gzip')
+
+    del train_data, train_targets
+
+print "Prediction name: %s" % test_prediction_name
 print "Done."
