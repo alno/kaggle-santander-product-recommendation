@@ -3,6 +3,18 @@ import numpy as np
 
 from meta import raw_data_dtypes
 
+
+def build_ncodpers_map(df, col):
+    return df[['ncodpers', col]].dropna().groupby('ncodpers')[col].first()
+
+
+def fillna_by_ncodpers(df, col):
+    df.loc[df[col].isnull(), col] = df.loc[df[col].isnull(), 'ncodpers'].map(build_ncodpers_map(df, col))
+
+
+date_spec = pd.to_datetime('2015-07-28')
+
+
 for ds in ['train', 'test']:
     print "Loading %s..." % ds
 
@@ -24,15 +36,24 @@ for ds in ['train', 'test']:
     df['indfall'] = (df['indfall'].fillna('N') == 'S').astype(np.uint8)
 
     df['renta'] = df['renta'].replace('NA', np.nan).astype(np.float64)
+    df['age'] = df['age'].replace('NA', np.nan).astype(np.float64)
 
-    df['age'] = df['age'].replace('NA', -1).astype(np.uint16)  # Use 0 as NA marker
-    df['antiguedad'] = df['antiguedad'].replace('NA', 999999).astype(np.int32)  # TODO Use smarter NA fill
     df['indrel_1mes'] = df['indrel_1mes'].replace('P', 0).fillna(-1).astype(float).astype(np.int8)
 
-    df['segmento'] = df['segmento'].map(lambda s: int(s[:2]), na_action='ignore').fillna(-1).astype(np.int8)
+    df.loc[df['fecha_dato'] < date_spec, 'antiguedad'] = (df.loc[df['fecha_dato'] < date_spec, 'fecha_dato'] - df.loc[df['fecha_dato'] < date_spec, 'fecha_alta']).map(lambda d: d.days / 30, na_action='ignore')
+    df['antiguedad'] = df['antiguedad'].replace('NA', np.nan).fillna(300).astype(np.int32)  # TODO Use smarter NA fill
 
-    df['sexo'] = df['sexo'].replace({'V': 1, 'H': -1}).fillna(0).astype(np.int8)  # TODO Try to estimate customer sex by other params ?
+    df['sexo'] = df['sexo'].replace({'V': 1, 'H': -1})
+    df['segmento'] = df['segmento'].map(lambda s: int(s[:2]), na_action='ignore')
 
+    if ds == 'train':
+        fillna_by_ncodpers(df, 'sexo')
+        fillna_by_ncodpers(df, 'segmento')
+        fillna_by_ncodpers(df, 'ind_actividad_cliente')
+        fillna_by_ncodpers(df, 'ind_nuevo')
+
+    df['sexo'] = df['sexo'].fillna(0).astype(np.int8)  # TODO Try to estimate customer sex by other params ?
+    df['segmento'] = df['segmento'].fillna(2.5).astype(np.float16)
     df['ind_actividad_cliente'] = df['ind_actividad_cliente'].fillna(-1).astype(np.int8)  # TODO Use smarter NA fill
     df['ind_nuevo'] = df['ind_nuevo'].fillna(-1).astype(np.int8)  # TODO Use smarter NA fill
 

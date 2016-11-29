@@ -86,7 +86,7 @@ raw_data_dtypes = {
 
 
 # See https://www.kaggle.com/sudalairajkumar/santander-product-recommendation/maximum-possible-score/comments
-lb_target_means = {
+lb_target_scores = {
     'ind_cco_fin_ult1':      0.0096681,
     'ind_recibo_ult1':       0.0086845,
     'ind_tjcr_fin_ult1':     0.0041178,
@@ -111,4 +111,26 @@ lb_target_means = {
     'ind_dela_fin_ult1':     0,  # ?
     'ind_ahor_fin_ult1':     0,  # ?
     'ind_aval_fin_ult1':     0,  # ?
+}
+
+lb_target_means = {
+    'ind_cco_fin_ult1': 0.010517,
+    'ind_cder_fin_ult1': 0.000011,
+    'ind_cno_fin_ult1': 0.003510,
+    'ind_ctju_fin_ult1': 0.000051,
+    'ind_ctma_fin_ult1': 0.000579,
+    'ind_ctop_fin_ult1': 0.000231,
+    'ind_ctpp_fin_ult1': 0.000137,
+    'ind_ecue_fin_ult1': 0.002379,
+    'ind_fond_fin_ult1': 0.000124,
+    'ind_hip_fin_ult1': 0.000026,
+    'ind_plan_fin_ult1': 0.000017,
+    'ind_pres_fin_ult1': 0.000007,
+    'ind_reca_fin_ult1': 0.003751,
+    'ind_tjcr_fin_ult1': 0.004672,
+    'ind_valo_fin_ult1': 0.000341,
+    'ind_viv_fin_ult1': 0.000000,
+    'ind_nomina_ult1': 0.005005,
+    'ind_nom_pens_ult1': 0.004842,
+    'ind_recibo_ult1': 0.009866,
 }
