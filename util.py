@@ -37,6 +37,7 @@ class Dataset(object):
         'manual': 'd2',
         'product-time': 'd2',
         'product-past-usage': 'sp',
+        'product-past-sums': 'd2',
         'product-purchases': 'sp',
         'targets': 'sp',
         'products': 'sp',
