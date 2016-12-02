@@ -42,6 +42,8 @@ train_pairs = [
     (['2015-06-28'], '2016-06-28'),
 ]
 
+n_bags = 4
+
 
 def densify(d):
     if hasattr(d, 'toarray'):
@@ -79,7 +81,9 @@ def load_train_data(dtt):
     return np.vstack(data), np.vstack(targets)
 
 
-def prepare_data(data, targets, target_means=None):
+def prepare_data(data, targets, target_means=None, random_state=11):
+    rs = np.random.RandomState(random_state)
+
     res_data = []
     res_targets = []
 
@@ -104,12 +108,12 @@ def prepare_data(data, targets, target_means=None):
             n_samples = int(total * target_means[i] * 0.8)
 
             if n_samples > trg.shape[0]:
-                dtn, trgn = resample(dt, trg, n_samples=n_samples-trg.shape[0], replace=(n_samples > trg.shape[0] * 2), random_state=11)
+                dtn, trgn = resample(dt, trg, n_samples=n_samples-trg.shape[0], replace=(n_samples > trg.shape[0] * 2), random_state=rs)
 
                 dt = np.vstack((dt, dtn))
                 trg = np.hstack((trg, trgn))
             else:
-                dt, trg = resample(dt, trg, n_samples=n_samples, replace=False, random_state=11)
+                dt, trg = resample(dt, trg, n_samples=n_samples, replace=False, random_state=rs)
 
             res_data[i] = dt
             res_targets[i] = trg
@@ -127,18 +131,24 @@ def prepare_data(data, targets, target_means=None):
 def predict(train_data, train_targets, data, prev_products, target_means, targets=None):
     """ Predict """
 
-    shape = (data.shape[0], len(target_columns))
+    preds = np.zeros((n_bags, data.shape[0], len(target_columns)))
 
-    if targets is None:
-        pred = model.fit_predict(train=prepare_data(train_data, train_targets, target_means), test=(data,), feature_names=feature_names)
-    else:
-        if args.optimize:
-            model.optimize(train=prepare_data(train_data, train_targets, target_means), val=prepare_data(data, targets), param_grid=param_grid, feature_names=feature_names)
+    for bag in xrange(n_bags):
+        print "Training model %d/%d..." % (bag+1, n_bags)
+        rs = 17 + 11 * bag
 
-        pred = model.fit_predict(train=prepare_data(train_data, train_targets, target_means), val=prepare_data(data, targets), test=(data,), feature_names=feature_names)
+        if targets is None:
+            preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), test=(data,), feature_names=feature_names)['ptest']
+        else:
+            if args.optimize:
+                model.optimize(train=prepare_data(train_data, train_targets, target_means, random_state=rs), val=prepare_data(data, targets, random_state=rs+13), param_grid=param_grid, feature_names=feature_names)
+
+            preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), val=prepare_data(data, targets, random_state=rs+13), test=(data,), feature_names=feature_names)['ptest']
 
     # Reshape scores, exclude previously bought products
-    scores = pred['ptest'].reshape(shape) * (1 - prev_products)
+    scores = np.mean(preds, axis=0) * (1 - prev_products)
+
+    print scores.shape
 
     for i, c in enumerate(target_columns):
         print "%s: %.6f" % (c, scores[:, i].mean())
