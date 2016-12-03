@@ -29,7 +29,7 @@ model = Xgb({
     'min_child_weight': 3,
     'subsample': 0.85,
     'colsample_bytree': 0.85,
-}, 200)
+}, 230)
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
