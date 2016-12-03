@@ -36,6 +36,7 @@ class Dataset(object):
         'existing': 'd1',
         'manual': 'd2',
         'product-time': 'd2',
+        'product-lags': 'sp',
         'product-past-usage': 'sp',
         'product-past-sums': 'd2',
         'product-purchases': 'sp',
