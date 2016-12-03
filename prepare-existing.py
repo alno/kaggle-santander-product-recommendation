@@ -9,7 +9,7 @@ old_index = []
 for dt in train_dates + [test_date]:
     print "Processing %s..." % dt
 
-    index = pd.read_pickle('cache/basic-%s.pickle' % dt).index
+    index = pd.Index(Dataset.load_part(dt, 'idx'))
 
     Dataset.save_part(dt, 'existing', index.isin(old_index))
 

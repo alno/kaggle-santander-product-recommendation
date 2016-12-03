@@ -12,7 +12,7 @@ past_usage = []
 for di, dt in enumerate(train_dates + [test_date]):
     print "Processing %s..." % dt
 
-    index = pd.read_pickle('cache/basic-%s.pickle' % dt).index
+    index = pd.Index(Dataset.load_part(dt, 'idx'))
 
     df = pd.DataFrame(0, columns=target_columns, index=index, dtype=np.uint8)
 

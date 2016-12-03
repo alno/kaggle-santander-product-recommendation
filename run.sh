@@ -13,10 +13,16 @@ train() {
 
 # Prepare data
 prepare basic
+prepare existing
 prepare targets
 prepare products
-prepare product-time
-prepare product-purchases
+prepare product-lags
+prepare manual
+
+#prepare product-time
+#prepare product-past-sums
+#prepare product-past-usage
+#prepare product-purchases
 
 # Basic models
-train hashes
+train ml2

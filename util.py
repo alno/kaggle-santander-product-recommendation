@@ -34,6 +34,7 @@ class Dataset(object):
     part_types = {
         'basic': 'df',
         'existing': 'd1',
+        'idx': 'd1',
         'manual': 'd2',
         'product-time': 'd2',
         'product-lags': 'sp',

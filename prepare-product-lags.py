@@ -16,7 +16,7 @@ res_columns = ["%s_lag_%d" % (col, lag) for lag in xrange(1, n_lags+1) for col i
 for di, dt in enumerate(train_dates + [test_date]):
     print "Processing %s..." % dt
 
-    index = pd.read_pickle('cache/basic-%s.pickle' % dt).index
+    index = pd.Index(Dataset.load_part(dt, 'idx'))
 
     df = pd.DataFrame(0, columns=res_columns, index=index, dtype=np.uint8)
 
