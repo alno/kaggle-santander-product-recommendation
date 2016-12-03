@@ -61,6 +61,8 @@ for dt in all_dates:
         df['province_%s' % prov.lower()] = basic['nomprov'] == prov
     df['province_other'] = ~basic['nomprov'].isin(provincies)
 
+    df['month'] = pd.to_datetime(dt).month
+
     Dataset.save_part(dt, 'manual', df.values)
 
 Dataset.save_part_features('manual', list(df.columns))
