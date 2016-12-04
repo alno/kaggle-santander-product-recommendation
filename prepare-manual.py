@@ -8,7 +8,7 @@ raw_columns = [
     'sexo', 'age',
     'ind_nuevo', 'antiguedad', 'indrel_1mes',
     'indresi', 'indext', 'indfall', 'tipodom', 'cod_prov',
-    'ind_actividad_cliente', 'renta', 'segmento'
+    'ind_actividad_cliente', 'segmento'
 ]
 
 map_columns = {
