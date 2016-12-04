@@ -38,6 +38,7 @@ class Dataset(object):
         'manual': 'd2',
         'renta': 'd2',
         'province': 'd2',
+        'feature-lags': 'd2',
         'product-time': 'd2',
         'product-lags': 'sp',
         'product-past-usage': 'sp',

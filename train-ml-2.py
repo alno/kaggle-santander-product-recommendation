@@ -29,17 +29,17 @@ model = Xgb({
     'min_child_weight': 3,
     'subsample': 0.85,
     'colsample_bytree': 0.85,
-}, 230)
+}, 300)
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
-feature_parts = ['prev-products', 'manual', 'product-lags', 'renta', 'province']
+feature_parts = ['prev-products', 'manual', 'product-lags', 'renta', 'province', 'feature-lags']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
 
 
 train_pairs = [
-    (['2015-05-28', '2016-04-28'], '2016-05-28'),
-    (['2015-06-28', '2016-05-28'], '2016-06-28'),
+    (['2015-05-28', '2016-03-28', '2016-04-28'], '2016-05-28'),
+    (['2015-06-28', '2016-04-28', '2016-05-28'], '2016-06-28'),
 ]
 
 n_bags = 4
