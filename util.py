@@ -37,6 +37,7 @@ class Dataset(object):
         'idx': 'd1',
         'manual': 'd2',
         'renta': 'd2',
+        'province': 'd2',
         'product-time': 'd2',
         'product-lags': 'sp',
         'product-past-usage': 'sp',

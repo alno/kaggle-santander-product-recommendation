@@ -7,7 +7,7 @@ from util import Dataset
 raw_columns = [
     'sexo', 'age',
     'ind_nuevo', 'antiguedad', 'indrel_1mes',
-    'indresi', 'indext', 'indfall', 'tipodom', 'cod_prov',
+    'indresi', 'indext', 'indfall', 'tipodom',
     'ind_actividad_cliente', 'segmento'
 ]
 
@@ -31,12 +31,11 @@ residence_groups = {
 
 canals = ['KHE', 'KAT', 'KFC', 'KHQ', 'KHM', 'KFA', 'KHN', 'KHK']
 
-provincies = ['MADRID', 'BARCELONA', 'VALENCIA', 'SEVILLA']
-
 
 all_dates = train_dates + [test_date]
+past_indexes = []
 
-for dt in all_dates:
+for di, dt in enumerate(all_dates):
     print "Processing %s..." % dt
 
     basic = pd.read_pickle('cache/basic-%s.pickle' % dt)
@@ -57,13 +56,17 @@ for dt in all_dates:
         df['canal_%s' % canal.lower()] = basic['canal_entrada'] == canal
     df['canal_other'] = ~basic['canal_entrada'].isin(canals)
 
-    for prov in provincies:
-        df['province_%s' % prov.lower()] = basic['nomprov'] == prov
-    df['province_other'] = ~basic['nomprov'].isin(provincies)
-
     df['month'] = pd.to_datetime(dt).month
+    df['days_since_reg'] = (pd.to_datetime(dt) - basic['fecha_alta']).map(lambda td: td.days)
+    df['months_known'] = 0
+
+    for ofs in range(1, 5):
+        if di - ofs >= 0:
+            df.loc[df.index.isin(past_indexes[di-ofs]), 'months_known'] = ofs
 
     Dataset.save_part(dt, 'manual', df.values)
+
+    past_indexes.append(basic.index)
 
 Dataset.save_part_features('manual', list(df.columns))
 
