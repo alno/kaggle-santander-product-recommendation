@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from meta import train_dates, test_date
 
@@ -64,7 +65,7 @@ for di, dt in enumerate(all_dates):
         if di - ofs >= 0:
             df.loc[df.index.isin(past_indexes[di-ofs]), 'months_known'] = ofs
 
-    Dataset.save_part(dt, 'manual', df.values)
+    Dataset.save_part(dt, 'manual', df.values.astype(np.float32))
 
     past_indexes.append(basic.index)
 

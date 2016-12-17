@@ -25,7 +25,7 @@ for di, dt in enumerate(train_dates + [test_date]):
             for col in feature_columns:
                 df.loc[idx, "%s_chg_%d" % (col, lag)] = (past_features[di-lag].loc[idx, col] != cur.loc[idx, col])
 
-    Dataset.save_part(dt, 'feature-lags', df.values)
+    Dataset.save_part(dt, 'feature-lags', df.values.astype(np.float32))
 
     if dt != test_date:
         past_features.append(cur)

@@ -9,6 +9,20 @@ import os
 cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache')
 
 
+def hstack(x):
+    if any(sp.issparse(p) for p in x):
+        return sp.hstack(x, format='csr')
+    else:
+        return np.hstack(x)
+
+
+def vstack(x):
+    if any(sp.issparse(p) for p in x):
+        return sp.vstack(x, format='csr')
+    else:
+        return np.vstack(x)
+
+
 def save_pickle(filename, data):
     with open(filename, 'w') as f:
         pickle.dump(data, f)

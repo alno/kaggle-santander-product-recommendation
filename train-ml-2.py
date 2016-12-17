@@ -4,8 +4,8 @@ import numpy as np
 import datetime
 import argparse
 
-from meta import target_columns, lb_target_means, test_date
-from util import Dataset
+from meta import target_columns, product_columns, lb_target_means, test_date
+from util import Dataset, hstack, vstack
 from sklearn.utils import resample
 
 from kaggle_util import Xgb
@@ -61,7 +61,7 @@ def densify(d):
 
 
 def load_data(dt):
-    data = np.hstack([densify(Dataset.load_part(dt, p)) for p in feature_parts])
+    data = hstack([Dataset.load_part(dt, p) for p in feature_parts])
     prev_products = Dataset.load_part(dt, 'prev-products').toarray()
 
     if dt == test_date:
@@ -86,7 +86,7 @@ def load_train_data(dtt):
         data.append(dt_data)
         targets.append(dt_targets)
 
-    return np.vstack(data), np.vstack(targets)
+    return vstack(data), vstack(targets)
 
 
 def prepare_data(data, targets, target_means=None, random_state=11):
@@ -118,8 +118,8 @@ def prepare_data(data, targets, target_means=None, random_state=11):
             if n_samples > trg.shape[0]:
                 dtn, trgn = resample(dt, trg, n_samples=n_samples-trg.shape[0], replace=(n_samples > trg.shape[0] * 2), random_state=rs)
 
-                dt = np.vstack((dt, dtn))
-                trg = np.hstack((trg, trgn))
+                dt = vstack((dt, dtn))
+                trg = hstack((trg, trgn))
             else:
                 dt, trg = resample(dt, trg, n_samples=n_samples, replace=False, random_state=rs)
 
@@ -133,7 +133,7 @@ def prepare_data(data, targets, target_means=None, random_state=11):
 
     print ("dist", dist)
 
-    return np.vstack(res_data), np.hstack(res_targets)
+    return vstack(res_data).toarray(), hstack(res_targets)
 
 
 def predict(train_data, train_targets, data, prev_products, target_means, targets=None):
@@ -146,12 +146,12 @@ def predict(train_data, train_targets, data, prev_products, target_means, target
         rs = 17 + 11 * bag
 
         if targets is None:
-            preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), test=(data,), feature_names=feature_names)['ptest']
+            preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), test=(data.toarray(),), feature_names=feature_names)['ptest']
         else:
             if args.optimize:
                 model.optimize(train=prepare_data(train_data, train_targets, target_means, random_state=rs), val=prepare_data(data, targets, random_state=rs+13), param_grid=param_grid, feature_names=feature_names)
 
-            preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), val=prepare_data(data, targets, random_state=rs+13), test=(data,), feature_names=feature_names)['ptest']
+            preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), val=prepare_data(data, targets, random_state=rs+13), test=(data.toarray(),), feature_names=feature_names)['ptest']
 
     # Reshape scores, exclude previously bought products
     scores = np.mean(preds, axis=0) * (1 - prev_products)

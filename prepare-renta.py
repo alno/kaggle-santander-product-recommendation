@@ -62,7 +62,7 @@ for dt in all_dates:
 
     df.loc[df['renta_missing'], 'renta'] = np.exp(model.predict(dpred))
 
-    Dataset.save_part(dt, 'renta', df.values)
+    Dataset.save_part(dt, 'renta', df.values.astype(np.float32))
 
 Dataset.save_part_features('renta', list(df.columns))
 

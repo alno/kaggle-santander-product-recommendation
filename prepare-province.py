@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from meta import train_dates, test_date
 from util import Dataset
@@ -32,7 +33,7 @@ for dt in all_dates:
         #df['province_%s' % prov.lower()] = basic['nomprov'] == prov
     #df['province_other'] = ~basic['nomprov'].isin(provincies)
 
-    Dataset.save_part(dt, 'province', df.values)
+    Dataset.save_part(dt, 'province', df.values.astype(np.float32))
 
 Dataset.save_part_features('province', list(df.columns))
 
