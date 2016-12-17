@@ -20,15 +20,17 @@ except ImportError:
 
 parser = argparse.ArgumentParser(description='Train model')
 parser.add_argument('--optimize', action='store_true', help='optimize model params')
-parser.add_argument('--threads', type=int, default=4, help='specify thread count')
+parser.add_argument('--threads', type=int, help='specify thread count')
 
 args = parser.parse_args()
+
+if args.threads is not None:
+    Xgb.default_params['nthread'] = args.threads
 
 model = Xgb({
     'objective': 'multi:softprob',
     'eval_metric': 'mlogloss',
     'num_class': len(target_columns),
-    'nthread': args.threads,
     'max_depth': 6,
     'eta': 0.05,
     'min_child_weight': 3,

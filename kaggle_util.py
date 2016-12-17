@@ -1,4 +1,5 @@
 import xgboost as xgb
+import numpy as np
 
 from bayes_opt import BayesianOptimization
 
@@ -9,7 +10,6 @@ class Xgb(object):
         'objective': 'multi:softprob',
         'eval_metric': 'mlogloss',
         'silent': 1,
-        'nthread': -1,
     }
 
     def __init__(self, params, n_iter=400):
@@ -38,16 +38,26 @@ class Xgb(object):
 
         print "    Feature importances: %s" % ', '.join('%s: %d' % t for t in sorted(model.get_fscore().items(), key=lambda t: -t[1]))
 
+        del dtrain
+
         res = {}
 
         if val is not None:
             print "    Eval data shape: %s" % str(val[0].shape)
             res['pval'] = model.predict(dval)
+            del dval
 
         if test is not None:
             print "    Test data shape: %s" % str(test[0].shape)
-            dtest = xgb.DMatrix(test[0], feature_names=feature_names)
-            res['ptest'] = model.predict(dtest)
+            res['ptest'] = np.zeros((test[0].shape[0], params['num_class']))
+
+            start = 0
+            batch_size = 30000
+
+            while start < test[0].shape[0]:
+                dtest = xgb.DMatrix(test[0][start:start+batch_size], feature_names=feature_names)
+                res['ptest'][start:start+batch_size] = model.predict(dtest)
+                start += batch_size
 
         return res
 
