@@ -53,6 +53,9 @@ train_pairs = [
 n_bags = args.bags
 
 
+target_product_idxs = [product_columns.index(col) for col in target_columns]
+
+
 def densify(d):
     if hasattr(d, 'toarray'):
         return d.toarray()
@@ -62,18 +65,18 @@ def densify(d):
 
 def load_data(dt):
     data = hstack([Dataset.load_part(dt, p) for p in feature_parts])
-    prev_products = Dataset.load_part(dt, 'prev-products').toarray()
+    prev_target_products = Dataset.load_part(dt, 'prev-products').toarray()[:, target_product_idxs]
 
     if dt == test_date:
-        return data, prev_products, pd.read_pickle('cache/basic-%s.pickle' % dt).index
+        return data, prev_target_products, pd.read_pickle('cache/basic-%s.pickle' % dt).index
 
     exs = Dataset.load_part(dt, 'existing')
 
     data = data[exs]
-    prev_products = prev_products[exs]
+    prev_target_products = prev_target_products[exs]
     targets = Dataset.load_part(dt, 'targets')[exs].toarray()
 
-    return data, prev_products, targets
+    return data, prev_target_products, targets
 
 
 def load_train_data(dtt):
@@ -136,7 +139,7 @@ def prepare_data(data, targets, target_means=None, random_state=11):
     return vstack(res_data).toarray(), hstack(res_targets)
 
 
-def predict(train_data, train_targets, data, prev_products, target_means, targets=None):
+def predict(train_data, train_targets, data, prev_target_products, target_means, targets=None):
     """ Predict """
 
     preds = np.zeros((n_bags, data.shape[0], len(target_columns)))
@@ -154,7 +157,7 @@ def predict(train_data, train_targets, data, prev_products, target_means, target
             preds[bag] = model.fit_predict(train=prepare_data(train_data, train_targets, target_means, random_state=rs), val=prepare_data(data, targets, random_state=rs+13), test=(data.toarray(),), feature_names=feature_names)['ptest']
 
     # Reshape scores, exclude previously bought products
-    scores = np.mean(preds, axis=0) * (1 - prev_products)
+    scores = np.mean(preds, axis=0) * (1 - prev_target_products)
 
     print scores.shape
 
