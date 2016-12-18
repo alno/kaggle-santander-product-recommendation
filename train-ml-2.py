@@ -37,10 +37,23 @@ presets = {
             'num_class': len(target_columns),
             'max_depth': 6,
             'eta': 0.1,
-            'min_child_weight': 3,
+            'min_child_weight': 2,
             'subsample': 0.85,
             'colsample_bytree': 0.85,
-        }, 170)
+        }, 150)
+    },
+
+    'xgb2': {
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(target_columns),
+            'max_depth': 6,
+            'eta': 0.05,
+            'min_child_weight': 2,
+            'subsample': 0.85,
+            'colsample_bytree': 0.85,
+        }, 300)
     },
 
     'lgb': {
@@ -87,7 +100,7 @@ def load_data(dt):
     prev_target_products = Dataset.load_part(dt, 'prev-products').toarray()[:, target_product_idxs]
 
     if dt == test_date:
-        return data, prev_target_products, pd.read_pickle('cache/basic-%s.pickle' % dt).index
+        return data, prev_target_products, Dataset.load_part(dt, 'idx')
 
     exs = Dataset.load_part(dt, 'existing')
 
@@ -244,6 +257,8 @@ for dtt, dtp in train_pairs:
         map_score = mapk(eval_targets, eval_predictions)
         prediction_name = 'ml-%s-%s-%.7f' % (args.preset, datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
 
+        np.save('preds/%s-%s.npy' % (prediction_name, dtp), eval_predictions)
+
         print "  MAP@7: %.7f" % map_score
 
         del eval_data, eval_targets, eval_prev_products, eval_predictions
@@ -254,6 +269,8 @@ for dtt, dtp in train_pairs:
         print "  Predicting..."
 
         test_predictions = predict(train_data, train_targets, test_data, test_prev_products, test_target_means)
+
+        np.save('preds/%s-%s.npy' % (prediction_name, dtp), test_predictions)
 
         subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
         subm.to_csv('subm/%s.csv.gz' % prediction_name, index=False, compression='gzip')
