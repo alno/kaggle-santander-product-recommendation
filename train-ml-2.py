@@ -98,6 +98,8 @@ def prepare_data(data, targets, target_means=None, random_state=11):
     res_data = []
     res_targets = []
 
+    train_target_means = np.zeros(len(target_columns), dtype=np.float64)
+
     for c in xrange(len(target_columns)):
         idx = targets[:, c] > 0
         cnt = idx.sum()
@@ -109,9 +111,11 @@ def prepare_data(data, targets, target_means=None, random_state=11):
             res_data.append(np.zeros((0, data.shape[1])))
             res_targets.append(np.zeros(0))
 
+        train_target_means[c] = cnt
+
     # Resample data to mimic target distribution
     if target_means is not None:
-        target_means = target_means / target_means.sum()
+        target_means = 0.5 * target_means / target_means.sum() + 0.5 * train_target_means / train_target_means.sum()
         total = sum(t.shape[0] for t in res_targets)
 
         for i in xrange(len(target_columns)):
