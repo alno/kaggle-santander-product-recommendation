@@ -60,6 +60,8 @@ class Dataset(object):
         'product-past-usage': 'sp',
         'product-past-sums': 'd2',
         'product-purchases': 'sp',
+        'product-add-times': 'sp',
+        'product-rm-times': 'sp',
         'targets': 'sp',
         'products': 'sp',
         'prev-products': 'sp'

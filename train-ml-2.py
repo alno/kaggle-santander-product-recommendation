@@ -60,7 +60,7 @@ model = presets[args.preset]['model']
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
-feature_parts = ['prev-products', 'manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs']
+feature_parts = ['prev-products', 'manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
 
 
