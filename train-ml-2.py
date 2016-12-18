@@ -4,13 +4,18 @@ import numpy as np
 import datetime
 import argparse
 
-from numba import jit
-
 from meta import target_columns, lb_target_means, test_date
 from util import Dataset
 from sklearn.utils import resample
 
 from kaggle_util import Xgb
+
+
+try:
+    from numba import jit
+except ImportError:
+    def jit(fn):
+        return fn
 
 
 parser = argparse.ArgumentParser(description='Train model')
