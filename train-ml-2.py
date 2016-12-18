@@ -33,11 +33,11 @@ model = Xgb({
     'eval_metric': 'mlogloss',
     'num_class': len(target_columns),
     'max_depth': 6,
-    'eta': 0.05,
+    'eta': 0.1,
     'min_child_weight': 3,
     'subsample': 0.85,
     'colsample_bytree': 0.85,
-}, 300)
+}, 170)
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
