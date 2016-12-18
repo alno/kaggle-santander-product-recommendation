@@ -35,6 +35,7 @@ class Xgb(object):
         params['seed'] = seed
 
         model = xgb.train(params, dtrain, self.n_iter, watchlist, verbose_eval=10)
+        model.dump_model('xgb.dump', with_stats=True)
 
         print "    Feature importances: %s" % ', '.join('%s: %d' % t for t in sorted(model.get_fscore().items(), key=lambda t: -t[1]))
 
