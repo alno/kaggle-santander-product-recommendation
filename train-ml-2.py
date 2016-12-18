@@ -21,6 +21,7 @@ except ImportError:
 parser = argparse.ArgumentParser(description='Train model')
 parser.add_argument('--optimize', action='store_true', help='optimize model params')
 parser.add_argument('--threads', type=int, help='specify thread count')
+parser.add_argument('--bags', type=int, default=1, help='number of bags')
 
 args = parser.parse_args()
 
@@ -49,7 +50,7 @@ train_pairs = [
     (['2015-06-28', '2016-04-28', '2016-05-28'], '2016-06-28'),
 ]
 
-n_bags = 1
+n_bags = args.bags
 
 
 def densify(d):
