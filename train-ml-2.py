@@ -8,7 +8,7 @@ from meta import target_columns, product_columns, lb_target_means, test_date
 from util import Dataset, hstack, vstack
 from sklearn.utils import resample
 
-from kaggle_util import Xgb
+from kaggle_util import Xgb, Lgb
 
 
 try:
@@ -19,6 +19,7 @@ except ImportError:
 
 
 parser = argparse.ArgumentParser(description='Train model')
+parser.add_argument('preset', type=str, default='xgb', help='model preset (features and hyperparams)')
 parser.add_argument('--optimize', action='store_true', help='optimize model params')
 parser.add_argument('--threads', type=int, help='specify thread count')
 parser.add_argument('--bags', type=int, default=1, help='number of bags')
@@ -28,16 +29,34 @@ args = parser.parse_args()
 if args.threads is not None:
     Xgb.default_params['nthread'] = args.threads
 
-model = Xgb({
-    'objective': 'multi:softprob',
-    'eval_metric': 'mlogloss',
-    'num_class': len(target_columns),
-    'max_depth': 6,
-    'eta': 0.1,
-    'min_child_weight': 3,
-    'subsample': 0.85,
-    'colsample_bytree': 0.85,
-}, 170)
+presets = {
+    'xgb': {
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(target_columns),
+            'max_depth': 6,
+            'eta': 0.1,
+            'min_child_weight': 3,
+            'subsample': 0.85,
+            'colsample_bytree': 0.85,
+        }, 170)
+    },
+
+    'lgb': {
+        'model': Lgb({
+            'num_class': len(target_columns),
+            'num_leaves': 32,
+            'feature_fraction': 0.9,
+            'bagging_fraction': 0.8,
+            'bagging_freq': 5,
+        }, 130)
+    },
+}
+
+print "Using preset %s" % args.preset
+
+model = presets[args.preset]['model']
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
@@ -223,6 +242,7 @@ for dtt, dtp in train_pairs:
         eval_predictions = predict(train_data, train_targets, eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
 
         map_score = mapk(eval_targets, eval_predictions)
+        prediction_name = 'ml-%s-%s-%.7f' % (args.preset, datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
 
         print "  MAP@7: %.7f" % map_score
 
@@ -234,12 +254,11 @@ for dtt, dtp in train_pairs:
         print "  Predicting..."
 
         test_predictions = predict(train_data, train_targets, test_data, test_prev_products, test_target_means)
-        test_prediction_name = 'ml-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
 
         subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
-        subm.to_csv('subm/%s.csv.gz' % test_prediction_name, index=False, compression='gzip')
+        subm.to_csv('subm/%s.csv.gz' % prediction_name, index=False, compression='gzip')
 
     del train_data, train_targets
 
-print "Prediction name: %s" % test_prediction_name
+print "Prediction name: %s" % prediction_name
 print "Done."

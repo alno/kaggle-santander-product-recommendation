@@ -1,4 +1,5 @@
 import xgboost as xgb
+import lightgbm as lgb
 import numpy as np
 
 from bayes_opt import BayesianOptimization
@@ -89,3 +90,58 @@ class Xgb(object):
         opt.maximize(n_iter=100)
 
         print "Best score: %.5f, params: %s" % (-opt.res['max']['max_val'], opt.res['mas']['max_params'])
+
+
+class Lgb(object):
+
+    default_params = {
+        'task': 'train',
+        'boosting_type': 'gbdt',
+        'application': 'multiclass',
+        'metric': 'multi_logloss',
+        'verbose': 0,
+    }
+
+    def __init__(self, params, n_iter=400):
+        self.params = self.default_params.copy()
+
+        for k in params:
+            self.params[k] = params[k]
+
+        self.n_iter = n_iter
+
+    def fit_predict(self, train, val=None, test=None, feature_names=None, seed=42):
+        print "    Train data shape: %s" % str(train[0].shape)
+
+        dtrain = lgb.Dataset(train[0], label=train[1], feature_name=feature_names)
+
+        if val is not None:
+            dval = lgb.Dataset(val[0], label=val[1], feature_name=feature_names, reference=dtrain)
+        else:
+            dval = None
+
+        params = self.params.copy()
+        params['seed'] = seed
+
+        model = lgb.train(params, dtrain, num_boost_round=self.n_iter, valid_sets=dval, verbose_eval=10)
+
+        del dtrain, dval
+
+        res = {}
+
+        if val is not None:
+            print "    Eval data shape: %s" % str(val[0].shape)
+            res['pval'] = model.predict(val[0])
+
+        if test is not None:
+            print "    Test data shape: %s" % str(test[0].shape)
+            res['ptest'] = np.zeros((test[0].shape[0], params['num_class']))
+
+            start = 0
+            batch_size = 100000
+
+            while start < test[0].shape[0]:
+                res['ptest'][start:start+batch_size] = model.predict(test[0][start:start+batch_size])
+                start += batch_size
+
+        return res
