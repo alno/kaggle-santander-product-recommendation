@@ -54,6 +54,7 @@ class Dataset(object):
         'province': 'd2',
         'residence': 'd2',
         'feature-lags': 'd2',
+        'feature-lag-diffs': 'd2',
         'product-time': 'd2',
         'product-lags': 'sp',
         'product-past-usage': 'sp',
