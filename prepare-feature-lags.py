@@ -7,7 +7,7 @@ from util import Dataset
 
 n_lags = 4
 
-feature_columns = ['tiprel_1mes', 'indrel_1mes', 'age', 'segmento', 'province_code']
+feature_columns = ['tiprel_1mes', 'indrel_1mes', 'age', 'segmento', 'province_code', 'indrel']
 res_columns = ["%s_lag_%d" % (col, lag) for lag in xrange(1, n_lags+1) for col in feature_columns]
 
 src_parts = ['manual', 'province']

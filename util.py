@@ -52,6 +52,7 @@ class Dataset(object):
         'manual': 'd2',
         'renta': 'd2',
         'province': 'd2',
+        'province-dummy': 'sp',
         'residence': 'd2',
         'feature-lags': 'd2',
         'feature-lag-diffs': 'd2',

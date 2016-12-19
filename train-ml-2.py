@@ -32,8 +32,12 @@ args = parser.parse_args()
 if args.threads is not None:
     Xgb.default_params['nthread'] = args.threads
 
+
+tree_feature_parts = ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
+
 presets = {
     'xgb': {
+        'feature_parts': tree_feature_parts,
         'model': Xgb({
             'objective': 'multi:softprob',
             'eval_metric': 'mlogloss',
@@ -47,6 +51,7 @@ presets = {
     },
 
     'xgb2': {
+        'feature_parts': tree_feature_parts,
         'model': Xgb({
             'objective': 'multi:softprob',
             'eval_metric': 'mlogloss',
@@ -60,6 +65,7 @@ presets = {
     },
 
     'lgb': {
+        'feature_parts': tree_feature_parts,
         'model': Lgb({
             'num_class': len(target_columns),
             'num_leaves': 32,
@@ -70,17 +76,19 @@ presets = {
     },
 
     'nn': {
+        'feature_parts': ['manual', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
         'model': Keras(nn_mlp_2, lambda: {'n_epoch': 30, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(target_columns)),
     },
 }
 
 print "Using preset %s" % args.preset
 
-model = presets[args.preset]['model']
+preset = presets[args.preset]
+model = preset['model']
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
-feature_parts = ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
+feature_parts = preset['feature_parts']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
 
 
