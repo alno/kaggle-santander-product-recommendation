@@ -8,8 +8,8 @@ from meta import train_dates, test_date, product_columns
 from util import Dataset
 
 product_lag_columns = [
-    'ind_ahor_fin_ult1',
-    'ind_aval_fin_ult1',
+    #'ind_ahor_fin_ult1',
+    #'ind_aval_fin_ult1',
     'ind_cco_fin_ult1',
     'ind_cder_fin_ult1',
     'ind_cno_fin_ult1',

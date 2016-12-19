@@ -7,7 +7,34 @@ from meta import train_dates, test_date, product_columns
 
 from util import Dataset
 
-add_rm_product_columns = product_columns
+add_rm_product_columns = [
+    #'ind_ahor_fin_ult1',
+    #'ind_aval_fin_ult1',
+    'ind_cco_fin_ult1',
+    'ind_cder_fin_ult1',
+    'ind_cno_fin_ult1',
+    'ind_ctju_fin_ult1',
+    'ind_ctma_fin_ult1',
+    'ind_ctop_fin_ult1',
+    'ind_ctpp_fin_ult1',
+    'ind_deco_fin_ult1',
+    #'ind_deme_fin_ult1',
+    'ind_dela_fin_ult1',
+    'ind_ecue_fin_ult1',
+    'ind_fond_fin_ult1',
+    #'ind_hip_fin_ult1',
+    #'ind_plan_fin_ult1',
+    #'ind_pres_fin_ult1',
+    'ind_reca_fin_ult1',
+    'ind_tjcr_fin_ult1',
+    'ind_valo_fin_ult1',
+    #'ind_viv_fin_ult1',
+    'ind_nomina_ult1',
+    'ind_nom_pens_ult1',
+    'ind_recibo_ult1',
+]
+
+max_add_rm_time = 4
 
 add_columns = ['%s_add' % c for c in add_rm_product_columns]
 rm_columns = ['%s_rm' % c for c in add_rm_product_columns]
@@ -25,7 +52,7 @@ for di, dt in enumerate(train_dates + [test_date]):
     add = pd.DataFrame(0, columns=add_columns, index=idx, dtype=np.uint8)
     rm = pd.DataFrame(0, columns=rm_columns, index=idx, dtype=np.uint8)
 
-    for i in range(1, 5):
+    for i in range(1, max_add_rm_time+1):
         if di - i > 0:
             add_idx = add.index.intersection(added[di-i].index)
             rm_idx = rm.index.intersection(removed[di-i].index)
@@ -34,7 +61,7 @@ for di, dt in enumerate(train_dates + [test_date]):
                 add.loc[add_idx, '%s_add' % col] += added[di-i].loc[add_idx, col]
                 rm.loc[rm_idx, '%s_rm' % col] += removed[di-i].loc[rm_idx, col]
 
-    for i in range(di-5):
+    for i in range(di-max_add_rm_time):
         added[i] = None
         removed[i] = None
 

@@ -73,18 +73,19 @@ model = presets[args.preset]['model']
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
-feature_parts = ['prev-products', 'manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
+feature_parts = ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
 feature_names = sum(map(Dataset.get_part_features, feature_parts), [])
 
 
 train_pairs = [
-    (['2015-05-28', '2016-03-28', '2016-04-28'], '2016-05-28'),
-    (['2015-06-28', '2016-04-28', '2016-05-28'], '2016-06-28'),
+    (['2015-05-28', '2016-02-28', '2016-03-28', '2016-04-28'], '2016-05-28'),
+    (['2015-06-28', '2016-03-28', '2016-04-28', '2016-05-28'], '2016-06-28'),
 ]
 
 n_bags = args.bags
 
 target_distribution_weight = 0.25
+base_sample_rate = 0.9
 
 target_product_idxs = [product_columns.index(col) for col in target_columns]
 
@@ -153,7 +154,7 @@ def prepare_data(data, targets, target_means=None, random_state=11):
 
         for i in xrange(len(target_columns)):
             dt, trg = res_data[i], res_targets[i]
-            n_samples = int(total * target_means[i] * 0.8)
+            n_samples = int(total * target_means[i] * base_sample_rate)
 
             if n_samples > trg.shape[0]:
                 dtn, trgn = resample(dt, trg, n_samples=n_samples-trg.shape[0], replace=(n_samples > trg.shape[0] * 2), random_state=rs)
@@ -256,7 +257,7 @@ for dtt, dtp in train_pairs:
         eval_predictions = predict(train_data, train_targets, eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
 
         map_score = mapk(eval_targets, eval_predictions)
-        prediction_name = 'ml-%s-%s-%.7f' % (args.preset, datetime.datetime.now().strftime('%Y%m%d-%H%M'), map_score)
+        prediction_name = '%s-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), args.preset, map_score)
 
         np.save('preds/%s-%s.npy' % (prediction_name, dtp), eval_predictions)
 
