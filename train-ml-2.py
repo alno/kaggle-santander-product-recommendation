@@ -10,6 +10,9 @@ from sklearn.utils import resample
 
 from kaggle_util import Xgb, Lgb
 
+from keras_model import Keras, nn_mlp_2
+from keras_util import ExponentialMovingAverage
+
 
 try:
     from numba import jit
@@ -65,6 +68,10 @@ presets = {
             'bagging_freq': 5,
         }, 130)
     },
+
+    'nn': {
+        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 30, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(target_columns)),
+    },
 }
 
 print "Using preset %s" % args.preset
@@ -85,7 +92,7 @@ train_pairs = [
 n_bags = args.bags
 
 target_distribution_weight = 0.25
-base_sample_rate = 0.9
+base_sample_rate = 0.8
 
 target_product_idxs = [product_columns.index(col) for col in target_columns]
 

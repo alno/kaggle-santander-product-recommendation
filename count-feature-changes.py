@@ -9,7 +9,7 @@ from util import Dataset
 
 n_lags = 3
 
-feature_columns = ['segmento', 'cod_prov', 'tiprel_1mes', 'indrel_1mes', 'ind_empleado', 'indfall', 'age']
+feature_columns = ['segmento', 'cod_prov', 'tiprel_1mes', 'indrel_1mes', 'ind_empleado', 'indfall', 'age', 'indrel']
 res_columns = ["%s_chg_%d" % (col, lag) for col in feature_columns for lag in xrange(1, n_lags+1)]
 
 past_features = []
