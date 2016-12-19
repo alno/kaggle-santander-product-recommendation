@@ -84,6 +84,7 @@ train_pairs = [
 
 n_bags = args.bags
 
+target_distribution_weight = 0.25
 
 target_product_idxs = [product_columns.index(col) for col in target_columns]
 
@@ -147,7 +148,7 @@ def prepare_data(data, targets, target_means=None, random_state=11):
 
     # Resample data to mimic target distribution
     if target_means is not None:
-        target_means = 0.5 * target_means / target_means.sum() + 0.5 * train_target_means / train_target_means.sum()
+        target_means = target_distribution_weight * target_means / target_means.sum() + (1 - target_distribution_weight) * train_target_means / train_target_means.sum()
         total = sum(t.shape[0] for t in res_targets)
 
         for i in xrange(len(target_columns)):
