@@ -34,7 +34,7 @@ if args.threads is not None:
     Xgb.default_params['nthread'] = args.threads
 
 
-tree_feature_parts = ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
+tree_feature_parts = ['manual', 'months-known', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
 
 popular_target_columns = [
     'ind_cco_fin_ult1', 'ind_cno_fin_ult1', 'ind_ctju_fin_ult1', 'ind_ctma_fin_ult1', 'ind_ctop_fin_ult1', 'ind_ctpp_fin_ult1', 'ind_ecue_fin_ult1',
@@ -85,6 +85,22 @@ presets = {
         }, 330)
     },
 
+    'xgb3p': {
+        'feature_parts': ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'target_columns': popular_target_columns,
+        'target_distribution_weight': 0.1,
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(popular_target_columns),
+            'max_depth': 6,
+            'eta': 0.05,
+            'min_child_weight': 2,
+            'subsample': 0.85,
+            'colsample_bytree': 0.7,
+        }, 400)
+    },
+
     'lgb': {
         'feature_parts': tree_feature_parts,
         'model': Lgb({
@@ -96,8 +112,14 @@ presets = {
         }, 130)
     },
 
-    'nn': {
-        'feature_parts': ['manual', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+    'nn1': {
+        'feature_parts': ['manual', 'manual-dummy', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 50, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(default_target_columns)),
+    },
+
+    'nn1p': {
+        'target_columns': popular_target_columns,
+        'feature_parts': ['manual', 'manual-dummy', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
         'model': Keras(nn_mlp_2, lambda: {'n_epoch': 50, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(default_target_columns)),
     },
 }
@@ -121,7 +143,7 @@ train_pairs = [
 
 n_bags = args.bags
 
-target_distribution_weight = 0.25
+target_distribution_weight = preset.get('target_distribution_weight', 0.25)
 base_sample_rate = 0.8
 
 target_product_idxs = [product_columns.index(col) for col in target_columns]

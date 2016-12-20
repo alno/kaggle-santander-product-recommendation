@@ -25,7 +25,6 @@ canals = ['KHE', 'KAT', 'KFC', 'KHQ', 'KHM', 'KFA', 'KHN', 'KHK']
 
 
 all_dates = train_dates + [test_date]
-past_indexes = []
 
 for di, dt in enumerate(all_dates):
     print "Processing %s..." % dt
@@ -46,15 +45,8 @@ for di, dt in enumerate(all_dates):
 
     df['month'] = pd.to_datetime(dt).month
     df['days_since_reg'] = (pd.to_datetime(dt) - basic['fecha_alta']).map(lambda td: td.days)
-    df['months_known'] = 0
-
-    for ofs in range(1, 5):
-        if di - ofs >= 0:
-            df.loc[df.index.isin(past_indexes[di-ofs]), 'months_known'] = ofs
 
     Dataset.save_part(dt, 'manual', df.values.astype(np.float32))
-
-    past_indexes.append(basic.index)
 
 Dataset.save_part_features('manual', list(df.columns))
 

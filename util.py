@@ -50,6 +50,8 @@ class Dataset(object):
         'existing': 'd1',
         'idx': 'd1',
         'manual': 'd2',
+        'manual-dummy': 'sp',
+        'months-known': 'd2',
         'renta': 'd2',
         'province': 'd2',
         'province-dummy': 'sp',
