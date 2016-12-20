@@ -4,8 +4,9 @@ import numpy as np
 import datetime
 import argparse
 
-from meta import target_columns, product_columns, lb_target_means, test_date
-from util import Dataset, hstack, vstack
+from meta import target_columns as default_target_columns
+from meta import product_columns, lb_target_means, test_date
+from util import Dataset, hstack, vstack, save_pickle
 from sklearn.utils import resample
 
 from kaggle_util import Xgb, Lgb
@@ -35,13 +36,18 @@ if args.threads is not None:
 
 tree_feature_parts = ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times']
 
+popular_target_columns = [
+    'ind_cco_fin_ult1', 'ind_cno_fin_ult1', 'ind_ctju_fin_ult1', 'ind_ctma_fin_ult1', 'ind_ctop_fin_ult1', 'ind_ctpp_fin_ult1', 'ind_ecue_fin_ult1',
+    'ind_fond_fin_ult1', 'ind_reca_fin_ult1', 'ind_tjcr_fin_ult1', 'ind_valo_fin_ult1', 'ind_nomina_ult1', 'ind_nom_pens_ult1', 'ind_recibo_ult1',
+]
+
 presets = {
     'xgb': {
         'feature_parts': tree_feature_parts,
         'model': Xgb({
             'objective': 'multi:softprob',
             'eval_metric': 'mlogloss',
-            'num_class': len(target_columns),
+            'num_class': len(default_target_columns),
             'max_depth': 6,
             'eta': 0.1,
             'min_child_weight': 2,
@@ -55,19 +61,34 @@ presets = {
         'model': Xgb({
             'objective': 'multi:softprob',
             'eval_metric': 'mlogloss',
-            'num_class': len(target_columns),
+            'num_class': len(default_target_columns),
             'max_depth': 6,
             'eta': 0.05,
             'min_child_weight': 2,
             'subsample': 0.85,
             'colsample_bytree': 0.85,
-        }, 300)
+        }, 330)
+    },
+
+    'xgb2p': {
+        'feature_parts': tree_feature_parts,
+        'target_columns': popular_target_columns,
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(popular_target_columns),
+            'max_depth': 6,
+            'eta': 0.05,
+            'min_child_weight': 2,
+            'subsample': 0.85,
+            'colsample_bytree': 0.85,
+        }, 330)
     },
 
     'lgb': {
         'feature_parts': tree_feature_parts,
         'model': Lgb({
-            'num_class': len(target_columns),
+            'num_class': len(default_target_columns),
             'num_leaves': 32,
             'feature_fraction': 0.9,
             'bagging_fraction': 0.8,
@@ -77,7 +98,7 @@ presets = {
 
     'nn': {
         'feature_parts': ['manual', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
-        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 30, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(target_columns)),
+        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 50, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(default_target_columns)),
     },
 }
 
@@ -85,6 +106,7 @@ print "Using preset %s" % args.preset
 
 preset = presets[args.preset]
 model = preset['model']
+target_columns = preset.get('target_columns', default_target_columns)
 
 param_grid = {'max_depth': (3, 8), 'min_child_weight': (1, 10), 'subsample': (0.5, 1.0), 'colsample_bytree': (0.5, 1.0)}
 
@@ -103,6 +125,7 @@ target_distribution_weight = 0.25
 base_sample_rate = 0.8
 
 target_product_idxs = [product_columns.index(col) for col in target_columns]
+target_column_idxs = [default_target_columns.index(col) for col in target_columns]
 
 
 def densify(d):
@@ -123,7 +146,7 @@ def load_data(dt):
 
     data = data[exs]
     prev_target_products = prev_target_products[exs]
-    targets = Dataset.load_part(dt, 'targets')[exs].toarray()
+    targets = Dataset.load_part(dt, 'targets')[exs].toarray()[:, target_column_idxs]
 
     return data, prev_target_products, targets
 
@@ -217,11 +240,8 @@ def predict(train_data, train_targets, data, prev_target_products, target_means,
     for i, c in enumerate(target_columns):
         print "%s: %.6f" % (c, scores[:, i].mean())
 
-    #for i in range(len(target_means)):
-    #    scores[:, i] *= target_means[i] / scores[:, i].mean()
-
     # Convert scores to predictions
-    return np.argsort(-scores, axis=1)[:, :8]
+    return scores
 
 
 @jit
@@ -245,7 +265,12 @@ def apk(actual, pred):
     return res / min(m, 7)
 
 
-def mapk(targets, predictions):
+def scores_to_pred(scores):
+    return np.argsort(-scores, axis=1)[:, :7]
+
+
+def mapk(targets, scores):
+    predictions = scores_to_pred(scores)
     total = 0.0
 
     for i, pred in enumerate(predictions):
@@ -254,8 +279,9 @@ def mapk(targets, predictions):
     return total / len(targets)
 
 
-def generate_submission(pred):
-    return [' '.join(target_columns[i] for i in p) for p in pred]
+def generate_submission(scores):
+    predictions = scores_to_pred(scores)
+    return [' '.join(target_columns[i] for i in p) for p in predictions]
 
 
 for dtt, dtp in train_pairs:
@@ -269,27 +295,28 @@ for dtt, dtp in train_pairs:
 
         print "  Predicting..."
 
-        eval_predictions = predict(train_data, train_targets, eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
+        eval_scores = predict(train_data, train_targets, eval_data, eval_prev_products, eval_targets.mean(axis=0), eval_targets)
 
-        map_score = mapk(eval_targets, eval_predictions)
+        map_score = mapk(eval_targets, eval_scores)
         prediction_name = '%s-%s-%.7f' % (datetime.datetime.now().strftime('%Y%m%d-%H%M'), args.preset, map_score)
 
-        np.save('preds/%s-%s.npy' % (prediction_name, dtp), eval_predictions)
+        np.save('preds/%s-%s.npy' % (prediction_name, dtp), eval_scores)
+        save_pickle('preds/%s-columns.pickle' % prediction_name, list(target_columns))
 
         print "  MAP@7: %.7f" % map_score
 
-        del eval_data, eval_targets, eval_prev_products, eval_predictions
+        del eval_data, eval_targets, eval_prev_products, eval_scores
     else:
         test_data, test_prev_products, test_idx = load_data(dtp)
         test_target_means = np.array([lb_target_means[c] for c in target_columns])
 
         print "  Predicting..."
 
-        test_predictions = predict(train_data, train_targets, test_data, test_prev_products, test_target_means)
+        test_scores = predict(train_data, train_targets, test_data, test_prev_products, test_target_means)
 
-        np.save('preds/%s-%s.npy' % (prediction_name, dtp), test_predictions)
+        np.save('preds/%s-%s.npy' % (prediction_name, dtp), test_scores)
 
-        subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_predictions)})
+        subm = pd.DataFrame({'ncodpers': test_idx, 'added_products': generate_submission(test_scores)})
         subm.to_csv('subm/%s.csv.gz' % prediction_name, index=False, compression='gzip')
 
     del train_data, train_targets
