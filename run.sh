@@ -17,12 +17,16 @@ prepare existing
 prepare targets
 prepare products
 prepare product-lags
+prepare product-lag-sums
+prepare product-add-rm-times
 prepare manual
-
-#prepare product-time
-#prepare product-past-sums
-#prepare product-past-usage
-#prepare product-purchases
+prepare manual-dummy
+prepare months-known
+prepare renta
+prepare province
+prepare province-dummy
+prepare feature-lags
+prepare feature-lag-diffs
 
 # Basic models
-train ml2
+#train ml2
