@@ -145,3 +145,26 @@ class Lgb(object):
                 start += batch_size
 
         return res
+
+
+class Sklearn(object):
+
+    def __init__(self, model):
+        self.model = model
+
+    def fit_predict(self, train, val=None, test=None, feature_names=None, seed=42):
+        print "    Train data shape: %s" % str(train[0].shape)
+
+        model = self.model().fit(train[0], train[1])
+
+        res = {}
+
+        if val is not None:
+            print "    Eval data shape: %s" % str(val[0].shape)
+            res['pval'] = model.predict_proba(val[0])
+
+        if test is not None:
+            print "    Test data shape: %s" % str(test[0].shape)
+            res['ptest'] = model.predict_proba(test[0])
+
+        return res

@@ -8,11 +8,14 @@ from meta import target_columns as default_target_columns
 from meta import product_columns, lb_target_means, test_date
 from util import Dataset, hstack, vstack, save_pickle
 from sklearn.utils import resample
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
-from kaggle_util import Xgb, Lgb
+from kaggle_util import Xgb, Lgb, Sklearn
 
-from keras_model import Keras, nn_mlp_2
+from keras_model import Keras, nn_mlp_2, nn_lr
 from keras_util import ExponentialMovingAverage
+from keras.optimizers import SGD, Adam, Adadelta
 
 
 try:
@@ -101,6 +104,55 @@ presets = {
         }, 400)
     },
 
+    'xgb4p': {
+        'feature_parts': ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'target_columns': popular_target_columns,
+        'target_distribution_weight': 0.1,
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(popular_target_columns),
+            'max_depth': 8,
+            'eta': 0.05,
+            'min_child_weight': 5,
+            'subsample': 0.85,
+            'colsample_bytree': 0.7,
+            'lambda': 0.8,
+        }, 300)
+    },
+
+    'xgb5p': {
+        'feature_parts': ['manual', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'target_columns': popular_target_columns,
+        'target_distribution_weight': 0.1,
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(popular_target_columns),
+            'max_depth': 8,
+            'eta': 0.02,
+            'min_child_weight': 5,
+            'subsample': 0.85,
+            'colsample_bytree': 0.7,
+            'lambda': 0.8,
+        }, 700)
+    },
+
+    'xgb6p': {
+        'feature_parts': ['manual', 'months-known', 'product-lags', 'renta', 'province', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times', 'product-lag-sums'],
+        'target_columns': popular_target_columns,
+        'model': Xgb({
+            'objective': 'multi:softprob',
+            'eval_metric': 'mlogloss',
+            'num_class': len(popular_target_columns),
+            'max_depth': 6,
+            'eta': 0.05,
+            'min_child_weight': 2,
+            'subsample': 0.85,
+            'colsample_bytree': 0.85,
+        }, 330)
+    },
+
     'lgb': {
         'feature_parts': tree_feature_parts,
         'model': Lgb({
@@ -120,7 +172,29 @@ presets = {
     'nn1p': {
         'target_columns': popular_target_columns,
         'feature_parts': ['manual', 'manual-dummy', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
-        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 50, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(default_target_columns)),
+        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 50, 'batch_size': 128, 'layers': [200, 100], 'dropouts': [0.3, 0.2], 'batch_norm': True, 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(popular_target_columns)),
+    },
+
+    'nn2p': {
+        'target_columns': popular_target_columns,
+        'feature_parts': ['manual', 'manual-dummy', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'model': Keras(nn_mlp_2, lambda: {'n_epoch': 50, 'batch_size': 128, 'layers': [100], 'dropouts': [0.2], 'optimizer': 'adadelta', 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(popular_target_columns)),
+    },
+
+    'nn3p': {
+        'target_columns': popular_target_columns,
+        'feature_parts': ['manual', 'manual-dummy', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'model': Keras(nn_lr, lambda: {'n_epoch': 50, 'batch_size': 128, 'optimizer': Adadelta(decay=1e-5), 'callbacks': [ExponentialMovingAverage(save_mv_ave_model=False)]}, n_classes=len(popular_target_columns)),
+    },
+
+    'lr1': {
+        'feature_parts': ['manual', 'manual-dummy', 'product-lags', 'renta', 'province-dummy', 'feature-lags', 'feature-lag-diffs', 'product-add-times', 'product-rm-times'],
+        'model': Sklearn(lambda: LogisticRegression()),
+    },
+
+    'rf1': {
+        'feature_parts': tree_feature_parts,
+        'model': Sklearn(lambda: RandomForestClassifier(50)),
     },
 }
 

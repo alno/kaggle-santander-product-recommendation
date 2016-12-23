@@ -1,7 +1,7 @@
 import numpy as np
 
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation
+from keras.layers import Dense, Dropout
 from keras.layers.advanced_activations import PReLU
 from keras.layers.normalization import BatchNormalization
 from keras import regularizers
@@ -84,14 +84,14 @@ def regularizer(params):
         return None
 
 
-def nn_lr(input_shape, params):
+def nn_lr(input_shape, params, n_classes):
     model = Sequential()
-    model.add(Dense(1, input_shape=input_shape))
+    model.add(Dense(n_classes, input_shape=input_shape, activation='softmax'))
 
     return model
 
 
-def nn_mlp_2(input_shape, params, n_classes=None):
+def nn_mlp_2(input_shape, params, n_classes):
     model = Sequential()
 
     for i, layer_size in enumerate(params['layers']):
@@ -110,10 +110,6 @@ def nn_mlp_2(input_shape, params, n_classes=None):
         if 'dropouts' in params:
             model.add(Dropout(params['dropouts'][i]))
 
-    if n_classes is not None:
-        model.add(Dense(n_classes))
-        model.add(Activation('softmax'))
-    else:
-        model.add(Dense(1, init='he_normal'))
+    model.add(Dense(n_classes, activation='softmax'))
 
     return model
