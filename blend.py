@@ -9,9 +9,15 @@ from meta import target_columns, test_date
 from util import load_pickle, Dataset
 
 preds = {
-    '20161220-2043-xgb2p-0.0269589': 0.7,
-    '20161221-0023-nn1-0.0269189': 0.3,
+    '20161221-0036-xgb2p-0.0269690': 1.0,
+    '20161221-0623-xgb3p-0.0269678': 0.9,
+    '20161221-1457-xgb4p-0.0269682': 0.7,
+    '20161221-1419-nn1p-0.0269826': 0.1,
+    '20161221-0244-nn1-0.0269693': 0.1,
+    '20161221-1328-xgb2-0.0269597': 0.2,
 }
+
+rank = False
 
 
 def load_and_combine_preds(dt):
@@ -23,7 +29,12 @@ def load_and_combine_preds(dt):
     df = pd.DataFrame(0.0, columns=target_columns, index=idx)
 
     for p in preds:
-        pdf = pd.DataFrame(np.load('preds/%s-%s.npy' % (p, dt)), columns=load_pickle('preds/%s-columns.pickle' % p), index=idx) * preds[p]
+        d = np.load('preds/%s-%s.npy' % (p, dt))
+
+        if rank:
+            d = d.argsort().argsort()
+
+        pdf = pd.DataFrame(d, columns=load_pickle('preds/%s-columns.pickle' % p), index=idx) * preds[p]
 
         for col in pdf.columns:
             df[col] -= pdf[col]
