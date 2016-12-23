@@ -1,13 +1,11 @@
 import pandas as pd
 import numpy as np
 
-import scipy.sparse as sp
-
 from meta import train_dates, test_date
 
 from util import Dataset
 
-offsets = range(1, 4)
+offsets = range(1, 5)
 past_sums = []
 
 for di, dt in enumerate(train_dates + [test_date]):
@@ -23,11 +21,11 @@ for di, dt in enumerate(train_dates + [test_date]):
 
             df.loc[idx, 'product_sum_%d' % ofs] += past_sums[di-ofs].loc[idx]
 
-    Dataset.save_part(dt, 'product-past-sums', df.values)
+    Dataset.save_part(dt, 'product-lag-sums', df.values)
 
     if dt != test_date:
         past_sums.append(pd.Series(np.array(Dataset.load_part(dt, 'products').sum(axis=1)).flatten(), index=index))
 
-Dataset.save_part_features('product-past-sums', list(df.columns))
+Dataset.save_part_features('product-lag-sums', list(df.columns))
 
 print "Done."
